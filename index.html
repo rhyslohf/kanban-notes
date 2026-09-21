@@ -12,7 +12,7 @@
       <h1>Kanban Board</h1>
       <div class="toolbar">
         <button id="importBtn" class="btn btn-primary">Import Markdown</button>
-        <button id="exportBtn" class="btn btn-secondary">Export Markdown</button>
+        <button id="exportBtn" class="btn btn-secondary">Get from AI</button>
         <button id="resetBtn" class="btn btn-danger">Reset Board</button>
       </div>
     </header>
@@ -22,6 +22,15 @@
         <h2>Import Markdown Backlog</h2>
         <textarea id="markdownInput" placeholder="Paste your Markdown backlog here..."></textarea>
         <button id="parseBtn" class="btn btn-primary">Parse & Load</button>
+      </div>
+    </div>
+    <div id="aiModal" class="modal hidden">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2>Prompt for AI Agent</h2>
+        <p class="ai-instructions">Copy the text below, paste it into an AI agent along with your own notes. The AI will return formatted Markdown. Then use Import Markdown to load it back.</p>
+        <textarea id="aiPrompt" readonly></textarea>
+        <button id="copyAIPrompt" class="btn btn-primary">Copy Prompt</button>
       </div>
     </div>
     <div id="board" class="board">
