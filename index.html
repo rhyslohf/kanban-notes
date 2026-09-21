@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Board</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Kanban Board</h1>
+      <div class="toolbar">
+        <button id="importBtn" class="btn btn-primary">Import Markdown</button>
+        <button id="exportBtn" class="btn btn-secondary">Export Markdown</button>
+        <button id="resetBtn" class="btn btn-danger">Reset Board</button>
+      </div>
+    </header>
+    <div id="importModal" class="modal hidden">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2>Import Markdown Backlog</h2>
+        <textarea id="markdownInput" placeholder="Paste your Markdown backlog here..."></textarea>
+        <button id="parseBtn" class="btn btn-primary">Parse & Load</button>
+      </div>
+    </div>
+    <div id="board" class="board">
+      <div class="column" id="todoColumn">
+        <div class="column-header">
+          <h2>To Do</h2>
+          <span id="todoCount" class="count">0</span>
+        </div>
+        <div id="todoList" class="card-list" data-status="todo">
+        </div>
+      </div>
+      <div class="column" id="doneColumn">
+        <div class="column-header">
+          <h2>Done</h2>
+          <span id="doneCount" class="count">0</span>
+        </div>
+        <div id="doneList" class="card-list" data-status="done">
+        </div>
+      </div>
+    </div>
+    <div id="emptyState" class="empty-state">
+      <p>No items yet. Import a Markdown backlog to get started.</p>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
