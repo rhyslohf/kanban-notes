@@ -11,6 +11,7 @@
     <header>
       <h1>Kanban Board</h1>
       <div class="toolbar">
+        <button id="addTodoBtn" class="btn btn-primary">Add Todo</button>
         <button id="importBtn" class="btn btn-primary">Import Markdown</button>
         <button id="exportBtn" class="btn btn-secondary">Get from AI</button>
         <button id="resetBtn" class="btn btn-danger">Reset Board</button>
@@ -33,6 +34,15 @@
         <button id="copyAIPrompt" class="btn btn-primary">Copy Prompt</button>
       </div>
     </div>
+    <div id="itemModal" class="modal hidden">
+      <div class="modal-content">
+        <span class="modal-close">&times;</span>
+        <h2 id="itemModalHeading">Add Todo</h2>
+        <input id="itemModalTitle" type="text" placeholder="Title" class="modal-input" />
+        <input id="itemModalDesc" type="text" placeholder="Description" class="modal-input" />
+        <button id="itemModalSubmit" class="btn btn-primary">Add</button>
+      </div>
+    </div>
     <div id="board" class="board">
       <div class="column" id="todoColumn">
         <div class="column-header">
@@ -45,7 +55,10 @@
       <div class="column" id="doneColumn">
         <div class="column-header">
           <h2>Done</h2>
-          <span id="doneCount" class="count">0</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="doneCount" class="count">0</span>
+            <button id="deleteBtn" class="btn btn-danger hidden" style="padding:4px 10px;font-size:0.75rem;">Delete Selected</button>
+          </div>
         </div>
         <div id="doneList" class="card-list" data-status="done">
         </div>

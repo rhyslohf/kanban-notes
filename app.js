@@ -1,23 +1,31 @@
 (function () {
-  const STORAGE_KEY = 'kanban-board-items';
+  var STORAGE_KEY = 'kanban-board-items';
 
-  let items = [];
-  let draggedItem = null;
+  var items = [];
+  var draggedItem = null;
+  var selectedItems = [];
+  var editingItemId = null;
 
-  const todoList = document.getElementById('todoList');
-  const doneList = document.getElementById('doneList');
-  const todoCount = document.getElementById('todoCount');
-  const doneCount = document.getElementById('doneCount');
-const emptyState = document.getElementById('emptyState');
-  const importModal = document.getElementById('importModal');
-  const aiModal = document.getElementById('aiModal');
-  const markdownInput = document.getElementById('markdownInput');
-  const aiPrompt = document.getElementById('aiPrompt');
-  const board = document.getElementById('board');
+  var todoList = document.getElementById('todoList');
+  var doneList = document.getElementById('doneList');
+  var todoCount = document.getElementById('todoCount');
+  var doneCount = document.getElementById('doneCount');
+  var emptyState = document.getElementById('emptyState');
+  var importModal = document.getElementById('importModal');
+  var aiModal = document.getElementById('aiModal');
+  var itemModal = document.getElementById('itemModal');
+  var markdownInput = document.getElementById('markdownInput');
+  var aiPrompt = document.getElementById('aiPrompt');
+  var board = document.getElementById('board');
+  var deleteBtn = document.getElementById('deleteBtn');
+  var itemModalHeading = document.getElementById('itemModalHeading');
+  var itemModalTitle = document.getElementById('itemModalTitle');
+  var itemModalDesc = document.getElementById('itemModalDesc');
+  var itemModalSubmit = document.getElementById('itemModalSubmit');
 
   function loadFromStorage() {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
+      var data = localStorage.getItem(STORAGE_KEY);
       if (data) {
         items = JSON.parse(data);
       }
@@ -31,26 +39,25 @@ const emptyState = document.getElementById('emptyState');
   }
 
   function parseMarkdown(markdown) {
-    const items = [];
-    const sections = markdown.trim().split(/\n(?=##\s)/);
-
+    var sections = markdown.trim().split(/\n(?=##\s)/);
+    var result = [];
     sections.forEach(function (section) {
-      const headerMatch = section.match(/^##\s+(.+)$/m);
+      var headerMatch = section.match(/^##\s+(.+)$/m);
       if (!headerMatch) return;
 
-      const title = headerMatch[1].trim();
-      const afterHeader = section.slice(headerMatch.index + headerMatch[0].length);
+      var title = headerMatch[1].trim();
+      var afterHeader = section.slice(headerMatch.index + headerMatch[0].length);
 
-      const descMatch = afterHeader.match(/^\s*([^\n-]+)/);
-      const description = descMatch ? descMatch[1].trim() : '';
+      var descMatch = afterHeader.match(/^\s*([^\n-]+)/);
+      var description = descMatch ? descMatch[1].trim() : '';
 
-      const bullets = [];
-      const bulletMatches = afterHeader.matchAll(/^- (.+)$/gm);
-      for (const match of bulletMatches) {
-        bullets.push(match[1].trim());
+      var bullets = [];
+      var bulletMatches = afterHeader.matchAll(/^- (.+)$/gm);
+      for (var i = 0; i < bulletMatches.length; i++) {
+        bullets.push(bulletMatches[i][1].trim());
       }
 
-      items.push({
+      result.push({
         id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
         title: title,
         description: description,
@@ -58,16 +65,15 @@ const emptyState = document.getElementById('emptyState');
         status: 'todo'
       });
     });
-
-    return items;
+    return result;
   }
 
   function render() {
     todoList.innerHTML = '';
     doneList.innerHTML = '';
 
-    const todoItems = items.filter(function (i) { return i.status === 'todo'; });
-    const doneItems = items.filter(function (i) { return i.status === 'done'; });
+    var todoItems = items.filter(function (i) { return i.status === 'todo'; });
+    var doneItems = items.filter(function (i) { return i.status === 'done'; });
 
     todoItems.forEach(function (item) {
       todoList.appendChild(createCard(item));
@@ -83,26 +89,59 @@ const emptyState = document.getElementById('emptyState');
     emptyState.classList.toggle('hidden', items.length > 0);
     board.classList.toggle('hidden', items.length === 0);
 
+    if (selectedItems.length > 0) {
+      deleteBtn.textContent = 'Delete Selected (' + selectedItems.length + ')';
+      deleteBtn.classList.remove('hidden');
+    } else {
+      deleteBtn.classList.add('hidden');
+    }
+
     saveToStorage();
   }
 
   function createCard(item) {
-    const card = document.createElement('div');
+    var card = document.createElement('div');
     card.className = 'card';
+    if (item.status === 'done' && selectedItems.indexOf(item.id) !== -1) {
+      card.classList.add('selected');
+    }
     card.draggable = true;
     card.dataset.id = item.id;
 
-    let bulletsHtml = '';
+    var bulletsHtml = '';
     if (item.bullets.length > 0) {
-      bulletsHtml = '<ul>' + item.bullets.map(function (b) {
+      var lis = item.bullets.map(function (b) {
         return '<li>' + escapeHtml(b) + '</li>';
-      }).join('') + '</ul>';
+      }).join('');
+      bulletsHtml = '<ul>' + lis + '</ul>';
     }
+
+    var deleteHtml = item.status === 'done'
+      ? '<button class="delete-btn" data-id="' + item.id + '">&times;</button>'
+      : '';
 
     card.innerHTML =
       '<h3>' + escapeHtml(item.title) + '</h3>' +
       (item.description ? '<p>' + escapeHtml(item.description) + '</p>' : '') +
-      bulletsHtml;
+      bulletsHtml +
+      '<button class="edit-btn" data-id="' + item.id + '">&#9998;</button>' +
+      deleteHtml;
+
+    var editBtn = card.querySelector('.edit-btn');
+    editBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openEditModal(item.id);
+    });
+
+    if (item.status === 'done') {
+      var delBtn = card.querySelector('.delete-btn');
+      if (delBtn) {
+        delBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          toggleSelect(item.id);
+        });
+      }
+    }
 
     card.addEventListener('dragstart', handleDragStart);
     card.addEventListener('dragend', handleDragEnd);
@@ -110,8 +149,73 @@ const emptyState = document.getElementById('emptyState');
     return card;
   }
 
+  function openAddModal() {
+    editingItemId = null;
+    itemModalHeading.textContent = 'Add Todo';
+    itemModalTitle.value = '';
+    itemModalDesc.value = '';
+    itemModalSubmit.textContent = 'Add';
+    itemModal.classList.remove('hidden');
+  }
+
+  function openEditModal(id) {
+    var item = items.find(function (i) { return i.id === id; });
+    if (!item) return;
+    editingItemId = id;
+    itemModalHeading.textContent = 'Edit Item';
+    itemModalTitle.value = item.title;
+    itemModalDesc.value = item.description || '';
+    itemModalSubmit.textContent = 'Update';
+    itemModal.classList.remove('hidden');
+  }
+
+  closeModal();
+
+  function submitItem() {
+    var title = itemModalTitle.value.trim();
+    if (!title) return;
+    var desc = itemModalDesc.value.trim();
+
+    if (editingItemId) {
+      var item = items.find(function (i) { return i.id === editingItemId; });
+      if (item) {
+        item.title = title;
+        item.description = desc;
+      }
+      editingItemId = null;
+    } else {
+      items.push({
+        id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+        title: title,
+        description: desc,
+        bullets: [],
+        status: 'todo'
+      });
+    }
+
+    closeModal();
+    render();
+  }
+
+  function toggleSelect(id) {
+    var idx = selectedItems.indexOf(id);
+    if (idx !== -1) {
+      selectedItems.splice(idx, 1);
+    } else {
+      selectedItems.push(id);
+    }
+    render();
+  }
+
+  function deleteSelected() {
+    items = items.filter(function (i) { return selectedItems.indexOf(i.id) === -1; });
+    selectedItems = [];
+    saveToStorage();
+    render();
+  }
+
   function escapeHtml(str) {
-    const div = document.createElement('div');
+    var div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
   }
@@ -134,14 +238,14 @@ const emptyState = document.getElementById('emptyState');
   function handleDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    const list = e.target.closest('.card-list');
+    var list = e.target.closest('.card-list');
     if (list) {
       list.classList.add('drag-over');
     }
   }
 
   function handleDragLeave(e) {
-    const list = e.target.closest('.card-list');
+    var list = e.target.closest('.card-list');
     if (list && !list.contains(e.relatedTarget)) {
       list.classList.remove('drag-over');
     }
@@ -149,15 +253,15 @@ const emptyState = document.getElementById('emptyState');
 
   function handleDrop(e) {
     e.preventDefault();
-    const list = e.target.closest('.card-list');
+    var list = e.target.closest('.card-list');
     if (!list) return;
     list.classList.remove('drag-over');
 
-    const id = e.dataTransfer.getData('text/plain');
-    const item = items.find(function (i) { return i.id === id; });
+    var id = e.dataTransfer.getData('text/plain');
+    var item = items.find(function (i) { return i.id === id; });
     if (!item) return;
 
-    const newStatus = list.dataset.status;
+    var newStatus = list.dataset.status;
     if (item.status !== newStatus) {
       item.status = newStatus;
       render();
@@ -173,106 +277,19 @@ const emptyState = document.getElementById('emptyState');
   }
 
   function showAIPrompt() {
-    const prompt = `Here's a more generalized version that keeps the structure and intent the same, but replaces the software-specific example with one that works across engineering disciplines.
-
-# Prompt: Engineering Notes → Actionable Work Queue
-
-Act as a senior engineer with architecture and implementation experience.
-
-I will provide an unstructured dump of engineering notes, TODOs, reminders, bug ideas, architecture thoughts, implementation fragments, and technical observations. Your job is to convert them into a concise, actionable engineering work queue.
-
-## Rules
-
-* Preserve technical terminology exactly where possible.
-
-* Keep every work item brief—these are implementation cues, not documentation.
-
-* Merge obvious duplicates or overlapping notes.
-
-* Do not invent missing implementation details.
-
-* Keep related tasks together where they clearly belong.
-
-* Remove conversational filler and rewrite into engineering language.
-
-* If a note contains enough detail to imply steps, include short bullet points.
-
-* Do not create epics, priorities, estimates, or acceptance criteria unless explicitly present.
-
-* Output only the formatted backlog.
-
-## Output Format
-
-Every item must follow this exact Markdown structure.
-
-Markdown
-
-\`\`\`
-## Short Header
-
-Brief one or two sentence description.
-
-- Step or implementation cue (only if useful)
-- Step or implementation cue
-- Step or implementation cue
-\`\`\`
-
-### Formatting Rules
-
-* Header: 2–6 words.
-
-* Description: Maximum 2 sentences.
-
-* Bullets: 0–5 bullets.
-
-* One blank line between sections.
-
-* Consistent formatting for every item.
-
-* No nested bullets.
-
-* No numbering.
-
-* No extra commentary.
-
-## Example
-
-Input
-
-> update monitoring alerts, clean up duplicate config entries, move shared logic into common module, keep existing behavior unchanged
-
-Output
-
-Markdown
-
-\`\`\`
-## Monitoring Cleanup
-
-Consolidate monitoring and shared implementation work while preserving existing behavior.
-
-- Update monitoring alerts
-- Remove duplicate configuration entries
-- Move shared logic into a common module
-- Preserve current behavior
-\`\`\`
-
-Now convert my notes into this format.
-
---- PASTE YOUR NOTES BELOW ---`;
-
-    document.getElementById('aiPrompt').value = prompt;
+    document.getElementById('aiPrompt').value = AI_PROMPT_TEXT;
     document.getElementById('aiModal').classList.remove('hidden');
   }
 
   function handleImport() {
-    const text = markdownInput.value.trim();
+    var text = markdownInput.value.trim();
     if (!text) return;
 
-    const parsed = parseMarkdown(text);
+    var parsed = parseMarkdown(text);
     if (parsed.length === 0) return;
 
     parsed.forEach(function (item) {
-      const existing = items.find(function (i) { return i.title === item.title; });
+      var existing = items.find(function (i) { return i.title === item.title; });
       if (!existing) {
         items.push(item);
       }
@@ -297,39 +314,51 @@ Now convert my notes into this format.
   function closeModal() {
     importModal.classList.add('hidden');
     aiModal.classList.add('hidden');
+    itemModal.classList.add('hidden');
+    editingItemId = null;
   }
 
-  document.getElementById('importBtn').addEventListener('click', openModal);
-  document.getElementById('exportBtn').addEventListener('click', showAIPrompt);
-  document.getElementById('resetBtn').addEventListener('click', resetBoard);
-  document.getElementById('copyAIPrompt').addEventListener('click', function () {
-    const ta = document.getElementById('aiPrompt');
-    ta.select();
-    document.execCommand('copy');
-    const btn = document.getElementById('copyAIPrompt');
-    btn.textContent = 'Copied!';
-    setTimeout(function () { btn.textContent = 'Copy Prompt'; }, 1500);
+  var closeButtons = document.querySelectorAll('.modal-close');
+  closeButtons.forEach(function (btn) {
+    btn.addEventListener('click', closeModal);
   });
-  document.getElementById('parseBtn').addEventListener('click', handleImport);
-  document.querySelector('.modal-close').addEventListener('click', closeModal);
   importModal.addEventListener('click', function (e) {
     if (e.target === importModal) closeModal();
   });
   aiModal.addEventListener('click', function (e) {
     if (e.target === aiModal) closeModal();
   });
-  markdownInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') {
-      closeModal();
-    }
-  });
-  aiPrompt.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') {
-      closeModal();
-    }
+  itemModal.addEventListener('click', function (e) {
+    if (e.target === itemModal) closeModal();
   });
 
-  loadFromStorage();
-  render();
-  initDragAndDrop();
+  document.getElementById('addTodoBtn').addEventListener('click', openAddModal);
+  document.getElementById('importBtn').addEventListener('click', openModal);
+  document.getElementById('exportBtn').addEventListener('click', showAIPrompt);
+  document.getElementById('resetBtn').addEventListener('click', resetBoard);
+  document.getElementById('itemModalSubmit').addEventListener('click', submitItem);
+  deleteBtn.addEventListener('click', deleteSelected);
+
+  document.getElementById('copyAIPrompt').addEventListener('click', function () {
+    var ta = document.getElementById('aiPrompt');
+    ta.select();
+    document.execCommand('copy');
+    var btn = document.getElementById('copyAIPrompt');
+    btn.textContent = 'Copied!';
+    setTimeout(function () { btn.textContent = 'Copy Prompt'; }, 1500);
+  });
+  document.getElementById('parseBtn').addEventListener('click', handleImport);
+
+  markdownInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+  aiPrompt.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+  itemModalTitle.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+  itemModalDesc.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
 })();
