@@ -52,7 +52,7 @@
       var description = descMatch ? descMatch[1].trim() : '';
 
       var bullets = [];
-      var bulletMatches = afterHeader.matchAll(/^- (.+)$/gm);
+      var bulletMatches = Array.from(afterHeader.matchAll(/^- (.+)$/gm));
       for (var i = 0; i < bulletMatches.length; i++) {
         bullets.push(bulletMatches[i][1].trim());
       }
@@ -127,21 +127,20 @@
       '<button class="edit-btn" data-id="' + item.id + '">&#9998;</button>' +
       deleteHtml;
 
-    var editBtn = card.querySelector('.edit-btn');
-    editBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      openEditModal(item.id);
-    });
-
-    if (item.status === 'done') {
-      var delBtn = card.querySelector('.delete-btn');
-      if (delBtn) {
-        delBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
+    card.addEventListener('click', function (e) {
+      var rect = card.getBoundingClientRect();
+      var x = e.clientX - rect.left;
+      var y = e.clientY - rect.top;
+      var w = rect.width;
+      var h = rect.height;
+      if (y < 30 && x > w - 60) {
+        if (x > w - 30) {
+          openEditModal(item.id);
+        } else if (item.status === 'done') {
           toggleSelect(item.id);
-        });
+        }
       }
-    }
+    });
 
     card.addEventListener('dragstart', handleDragStart);
     card.addEventListener('dragend', handleDragEnd);
@@ -156,6 +155,7 @@
     itemModalDesc.value = '';
     itemModalSubmit.textContent = 'Add';
     itemModal.classList.remove('hidden');
+    itemModalTitle.focus();
   }
 
   function openEditModal(id) {
@@ -164,31 +164,49 @@
     editingItemId = id;
     itemModalHeading.textContent = 'Edit Item';
     itemModalTitle.value = item.title;
-    itemModalDesc.value = item.description || '';
+    // Rebuild textarea content: description line, then bullet lines
+    var descLines = item.description ? [item.description] : [];
+    var bulletLines = (item.bullets || []).map(function (b) { return '- ' + b; });
+    itemModalDesc.value = descLines.concat(bulletLines).join('\n');
     itemModalSubmit.textContent = 'Update';
     itemModal.classList.remove('hidden');
+    itemModalTitle.focus();
   }
 
-  closeModal();
+  function parseDescriptionField(raw) {
+    var lines = raw.trim().split('\n');
+    var descLines = [];
+    var bullets = [];
+    lines.forEach(function (line) {
+      var trimmed = line.trim();
+      if (trimmed.startsWith('- ')) {
+        bullets.push(trimmed.slice(2).trim());
+      } else if (trimmed) {
+        descLines.push(trimmed);
+      }
+    });
+    return { description: descLines.join(' '), bullets: bullets };
+  }
 
   function submitItem() {
     var title = itemModalTitle.value.trim();
     if (!title) return;
-    var desc = itemModalDesc.value.trim();
+    var parsed = parseDescriptionField(itemModalDesc.value);
 
     if (editingItemId) {
       var item = items.find(function (i) { return i.id === editingItemId; });
       if (item) {
         item.title = title;
-        item.description = desc;
+        item.description = parsed.description;
+        item.bullets = parsed.bullets;
       }
       editingItemId = null;
     } else {
       items.push({
         id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
         title: title,
-        description: desc,
-        bullets: [],
+        description: parsed.description,
+        bullets: parsed.bullets,
         status: 'todo'
       });
     }
@@ -221,14 +239,15 @@
   }
 
   function handleDragStart(e) {
-    draggedItem = e.target;
-    e.target.classList.add('dragging');
+    var card = e.currentTarget;
+    draggedItem = card;
+    card.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', e.target.dataset.id);
+    e.dataTransfer.setData('text/plain', card.dataset.id);
   }
 
   function handleDragEnd(e) {
-    e.target.classList.remove('dragging');
+    e.currentTarget.classList.remove('dragging');
     draggedItem = null;
     document.querySelectorAll('.card-list').forEach(function (list) {
       list.classList.remove('drag-over');
@@ -359,6 +378,10 @@
     if (e.key === 'Escape') closeModal();
   });
   itemModalDesc.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape' && !e.shiftKey) closeModal();
   });
+
+  loadFromStorage();
+  initDragAndDrop();
+  render();
 })();

@@ -1,6 +1,6 @@
 # Kanban Board
 
-A lightweight, client-side single-page web application that transforms Markdown backlog into a visual Kanban board for engineering work items.
+A lightweight, client-side single-page web application that transforms a Markdown backlog into a visual Kanban board for engineering work items.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![HTML](https://img.shields.io/badge/html-5-blue.svg)
@@ -9,13 +9,14 @@ A lightweight, client-side single-page web application that transforms Markdown 
 
 ## Features
 
-- **Markdown Import** — Paste a Markdown backlog and automatically parse work items
+- **Markdown Import** — Paste a Markdown backlog and automatically parse work items, including titles, descriptions, and bullet points
 - **Two-Column Kanban** — Visual board with **To Do** and **Done** columns
 - **Drag & Drop** — Move items between columns with native HTML5 drag-and-drop
 - **Local Storage** — All state persists across browser refreshes automatically
-- **Add Todo** — Quickly add new items with a title and optional description via the shared item modal
-- **Edit Items** — Click the pencil icon on any card to edit its title and description
-- **Multi-Select Delete** — Click the red X on Done items to select them, then use the Delete Selected button in the Done column header to remove multiple items at once
+- **Add Todo** — Quickly add new items with a title, description, and optional bullet points via the item modal
+- **Edit Items** — Click the pencil icon (✏️) on any card to edit its title, description, and bullet points
+- **Bullet Points** — Both imported Markdown and manually added/edited items support bullet points, shown on the card
+- **Multi-Select Delete** — Click the red ✕ on Done items to select them, then use **Delete Selected** to remove multiple items at once
 - **Get from AI** — Generate a prompt for AI agents to transform your notes into a clean engineering backlog, then import the returned Markdown back
 - **Reset Board** — Clear all data with confirmation
 - **Dark Theme** — Lightweight, fast, and fully responsive UI
@@ -28,73 +29,106 @@ A lightweight, client-side single-page web application that transforms Markdown 
    git clone https://github.com/<username>/kanban-board.git
    cd kanban-board
    ```
-2. Open `index.html` in your browser, or serve it locally:
+2. Open `index.html` directly in your browser, or serve it locally:
    ```bash
    python -m http.server 8080
    ```
    Then navigate to `http://localhost:8080`.
 
-## Markdown Format
+No build step or package installation is required.
 
-Paste the following format into the **Import Markdown** modal:
+## Markdown Import Format
+
+Click **Import Markdown** and paste a backlog in the following format:
 
 ```markdown
 ## Short Header
 
 Brief description.
 
-- Optional bullet
-- Optional bullet
+- Optional bullet point
+- Optional bullet point
 
 ## Another Header
 
 Another description.
+
+- A bullet
 ```
 
-Each `## Header` becomes a work item. The first line after the header is treated as the description. Lines starting with `- ` are parsed as optional bullet points.
+Each `## Heading` becomes a card in the **To Do** column. The first non-bullet line after the heading is the description. Lines starting with `- ` become bullet points shown beneath the description on the card.
+
+Importing is additive — items with duplicate titles are skipped, so re-importing a backlog is safe.
 
 ## Adding and Editing Items
 
-1. Click **Add Todo** in the toolbar to open the item modal with empty fields
-2. Enter a title (required) and description (optional)
-3. Click **Add** to create a new card in the **To Do** column
-4. To edit an existing item, hover over any card and click the pencil icon (**✏️**)
-5. The same modal opens with the item's current details
-6. Click **Update** to save changes
-7. Press **Escape** or click outside the modal to cancel
+1. Click **Add Todo** in the toolbar to open the item modal
+2. Enter a **Title** (required)
+3. In the **Description** field (a multi-line text area), add:
+   - A plain description on the first line(s), and/or
+   - Bullet points on any line starting with `- ` (dash + space)
+4. Click **Add** to create the card in the **To Do** column
+
+To edit an existing item:
+
+1. Hover over any card and click the blue pencil icon (**✏️**) in the top-right corner
+2. The modal opens pre-filled with the item's current title, description, and bullet points
+3. Make your changes and click **Update** to save
+4. Press **Escape** or click outside the modal to cancel without saving
+
+### Description Field Example
+
+```
+Implement authentication middleware
+- Add JWT validation
+- Handle token expiry
+- Write unit tests
+```
+
+This produces a card with the description *"Implement authentication middleware"* and three bullet points.
+
+## Drag & Drop
+
+- Grab any card and drag it to the **Done** column to mark it complete
+- Drag it back to **To Do** to reopen it
+- The target column highlights in blue when you hover over it during a drag
+- All status changes are saved to Local Storage immediately
 
 ## Multi-Select Delete
 
 1. Hover over any item in the **Done** column
-2. Click the red **X** button to select it (items get a red border when selected)
-3. Click multiple items to add them to the selection
-4. The **Delete Selected (N)** button appears in the Done column header
-5. Click it to remove all selected items at once
+2. Click the red **✕** button to select it (items get a red border when selected)
+3. Select as many items as needed
+4. The **Delete Selected (N)** button appears in the Done column header showing the count
+5. Click it to permanently remove all selected items
 
 ## AI Workflow
 
 1. Click **Get from AI** in the toolbar
-2. A pre-built prompt appears in a modal
-3. Copy the prompt and paste it into an AI agent along with your own notes
-4. The AI returns formatted Markdown
-5. Use **Import Markdown** to load the AI's output back into the board
+2. A pre-built prompt appears — copy it
+3. Paste the prompt into an AI assistant along with your own notes
+4. The AI returns a formatted Markdown backlog
+5. Click **Import Markdown** and paste the AI's output to load all items onto the board
 
-## How It Works
+## Local Storage
 
-1. Click **Add Todo** to create items individually, or **Import Markdown** to bulk-parse a backlog
-2. Items appear in the **To Do** column
-3. Drag items to the **Done** column to mark them complete
-4. Edit items anytime using the pencil icon on hover
-5. Delete completed items using the multi-select X buttons in the Done column
-6. Click **Get from AI** to generate a prompt for enriching your notes
-7. All changes are saved to Local Storage automatically
+All board data (items, statuses, descriptions, and bullet points) is automatically saved to the browser's `localStorage` under the key `kanban-board-items`. The board fully restores its state on every page load — no server or login required.
+
+To clear all data, click **Reset Board** and confirm the prompt.
+
+## Keyboard Shortcuts
+
+| Key | Context | Action |
+|-----|---------|--------|
+| `Escape` | Any modal | Close the modal |
+| `Escape` | Description textarea | Close the modal (when not composing a bullet) |
 
 ## Browser Support
 
 - Chrome (recommended)
 - Firefox
-- Safari
 - Edge
+- Safari
 
 ## License
 
